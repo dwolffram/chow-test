@@ -11,7 +11,7 @@ def select_ts(df, identifier):
     ts.name = identifier
     return ts
 
-def split_at_breakpoint(ts, breakpoint='2014'):
+def split_at_breakpoint(ts, breakpoint):
       
     ts1, ts2 = ts[ts.index < breakpoint ], ts[ts.index >= breakpoint ]
     
@@ -21,7 +21,7 @@ def rss (ts):
     """Fits a linear regression model and computes the residual sum of squares."""
     
     x = np.arange(len(ts)).reshape(-1,1)
-    y = ts.UMSATZ
+    y = ts.iloc[:, 0]
     
     lm = LinearRegression().fit(x, y)
     y_pred = lm.predict(x)
@@ -49,7 +49,7 @@ def f_value(ts, ts1, ts2):
     
     return chow_nom / chow_denom
 
-def chow_test(ts, breakpoint='2014-01-01'):
+def chow_test(ts, breakpoint):
         
     ts, ts1, ts2 = split_at_breakpoint(ts, breakpoint)
     
@@ -62,7 +62,7 @@ def chow_test(ts, breakpoint='2014-01-01'):
 def plot_chow(ts, breakpoint, x_label='', y_label=''):
     """Plots the linear regression models computed for the chow test."""
     
-    print(chow_test(ts))
+    print(chow_test(ts, breakpoint))
     title = ts.name
     pal = sb.color_palette('colorblind')
     
