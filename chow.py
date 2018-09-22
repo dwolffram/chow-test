@@ -83,7 +83,7 @@ def plot_chow(ts, breakpoint, x_label='', y_label=''):
 
     sb.lmplot(data=all_ts, x='X' , y=all_ts.columns[0], hue='id', scatter_kws={"s": 0}, truncate=True, legend=False, ci=None, 
               palette=[pal[4], pal[2], pal[1]])
-    plt.plot(ts.X, ts.UMSATZ)
+    plt.plot(ts.X, ts.iloc[:, 0])
     
     plt.title(title)
     plt.xlabel(x_label)
