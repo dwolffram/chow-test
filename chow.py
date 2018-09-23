@@ -5,12 +5,6 @@ import seaborn as sb
 import scipy
 from sklearn.linear_model import LinearRegression
 
-def select_ts(df, identifier):
-    ts = df.loc[df.iloc[:, 0] == identifier, df.columns[[1, 2]]]
-    ts.set_index(df.columns[1], inplace=True)
-    ts.name = identifier
-    return ts
-
 def split_at_breakpoint(ts, breakpoint):
       
     ts1, ts2 = ts[ts.index < breakpoint ], ts[ts.index >= breakpoint ]
@@ -18,10 +12,15 @@ def split_at_breakpoint(ts, breakpoint):
     return ts.copy(), ts1.copy(), ts2.copy()    
 
 def rss (ts):
-    """Fits a linear regression model and computes the residual sum of squares."""
+    """Fits a linear regression model and computes the residual sum of squares.
+    Args:
+        ts: The whole time series
+    Returns:
+        rss: residual sum of squares
+    """
     
     x = np.arange(len(ts)).reshape(-1,1)
-    y = ts.iloc[:, 0]
+    y = ts.values
     
     lm = LinearRegression().fit(x, y)
     y_pred = lm.predict(x)
@@ -31,40 +30,58 @@ def rss (ts):
     return rss
 
 def f_value(ts, ts1, ts2):
-    """This is the f_value function for the Chow Break test.
+    """Computes the f-value of the Chow test.
     Args:
         ts: The whole time series
         ts1: Time series before breakpoint
         ts2: Time series after breakpoint
     Returns:
-        F-value: Float value of chow break test
+        F: F-value of Chow test
     """
 
     rss_total = rss(ts)
     rss_1 = rss(ts1)
     rss_2 = rss(ts2)
 
-    chow_nom = (rss_total - (rss_1 + rss_2)) / 2
-    chow_denom = (rss_1 + rss_2) / (len(ts) - 4)
+    F = ((rss_total - (rss_1 + rss_2)) / 2) / ((rss_1 + rss_2) / (len(ts) - 4))
     
-    return chow_nom / chow_denom
+    return F
 
 def chow_test(ts, breakpoint):
-        
+    """Performs the Chow test for the given time series at a specified breakpoint.
+    Args:
+        ts: time series
+        breakpoint: date
+    Returns:
+        p: p-value of the Chow test
+    """
+    
     ts, ts1, ts2 = split_at_breakpoint(ts, breakpoint)
     
     F = f_value(ts, ts1, ts2)
     
-    p_value = scipy.stats.f.sf(F, 2, len(ts)-4)
+    p = scipy.stats.f.sf(F, 2, len(ts)-4)
     
-    return p_value
+    return p
 
-def plot_chow(ts, breakpoint, x_label='', y_label=''):
+def chow_test_all(df, breakpoint):
+    """Performs the Chow test for all groups at a specified breakpoint.
+    Args:
+        df: DataFrame with an id, date and value column
+        breakpoint: date
+    Returns:
+        p_values: p-value of the Chow test for each group given by id
+    """
+    p_values = df.groupby(level=0).apply(lambda x: pd.Series({'p-value': chow_test(x.reset_index(level=[0], drop=True), breakpoint)}))
+    return p_values
+
+def plot_chow(ts, breakpoint, title='', x_label='', y_label=''):
     """Plots the linear regression models computed for the chow test."""
     
-    print(chow_test(ts, breakpoint))
-    title = ts.name
+    sb.set(color_codes=True)
     pal = sb.color_palette('colorblind')
+    
+    print('p-value: ' + str(chow_test(ts, breakpoint)))
     
     ts, ts1, ts2 = split_at_breakpoint(ts, breakpoint)
     
@@ -89,3 +106,14 @@ def plot_chow(ts, breakpoint, x_label='', y_label=''):
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.xticks(loc, labels)
+    
+    
+# def prepare_df(df):
+#    '''Aggregates the time series in each group.'''
+#    return df.groupby([df.columns[0], pd.Grouper(key=df.columns[1], freq='M')]).mean()
+
+# def select_ts(df, identifier):
+#     ts = df.loc[df.iloc[:, 0] == identifier, df.columns[[1, 2]]]
+#     ts.set_index(df.columns[1], inplace=True)
+#     ts.name = identifier
+#     return ts
